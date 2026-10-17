@@ -58,6 +58,10 @@ class DashboardController extends \frieren\core\Controller
 
     public function startSystemUpdate()
     {
+        if (\DeviceConfig::systemFamily() === 'Linux') {
+            return self::setError('Firmware updates are only available on OpenWrt. Use the Linux package manager for host updates.');
+        }
+
         if (!self::setupCoreHelper()::hasInternetConnection()) {
             return self::setError('No internet connection available.');
         }

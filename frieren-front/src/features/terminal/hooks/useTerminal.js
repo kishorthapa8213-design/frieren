@@ -15,6 +15,10 @@ const WS_PORT = 5001;
 
 const buildWsUrl = () => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const terminalPath = import.meta.env.VITE_TERMINAL_PATH;
+    if (terminalPath) {
+        return `${protocol}//${window.location.host}${terminalPath}`;
+    }
     return `${protocol}//${window.location.hostname}:${WS_PORT}/ws`;
 };
 

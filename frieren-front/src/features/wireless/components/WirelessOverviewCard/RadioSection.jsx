@@ -67,6 +67,7 @@ const RadioSection = ({ radioName, radio, onScan, onEdit, onAdd, onConfigure, ch
                         icon={'settings'}
                         title={'Configure radio'}
                         onClick={() => onConfigure(radioName, radio.band)}
+                        disabled={radio.linuxWireless}
                     />
                     <Button
                         size={'sm'}
@@ -81,6 +82,9 @@ const RadioSection = ({ radioName, radio, onScan, onEdit, onAdd, onConfigure, ch
                         icon={'plus'}
                         title={'Add interface'}
                         onClick={() => onAdd(radioName)}
+                        disabled={radio.linuxWireless && radio.interfaces?.some(
+                            (iface) => iface.mode === 'monitor' && !iface.disabled
+                        )}
                     />
                 </ActionButtons>
             </div>

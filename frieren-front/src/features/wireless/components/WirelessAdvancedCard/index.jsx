@@ -29,6 +29,7 @@ const WirelessAdvancedCard = () => {
     const [content, setContent] = useState('');
     const [showResetModal, setShowResetModal] = useState(false);
 
+    const editable = data?.editable !== false;
     const isBusy = isSaving || isResetting || isFetching;
 
     useEffect(() => {
@@ -56,7 +57,9 @@ const WirelessAdvancedCard = () => {
         <PanelCard
             title={'Raw Wireless Config'}
             icon={'sliders'}
-            subtitle={'Edit /etc/config/wireless directly. Changes are applied immediately via wifi reload.'}
+            subtitle={editable
+                ? 'Edit /etc/config/wireless directly. Changes are applied immediately via wifi reload.'
+                : 'Raw UCI wireless configuration is unavailable on Linux. Manage Wi-Fi using the Overview tab.'}
             showRefresh={true}
             refetch={refetch}
             isFetching={isBusy}
@@ -66,7 +69,7 @@ const WirelessAdvancedCard = () => {
                 rows={20}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                disabled={isBusy}
+                disabled={isBusy || !editable}
                 className={'font-monospace'}
                 spellCheck={false}
             />
@@ -75,7 +78,7 @@ const WirelessAdvancedCard = () => {
                     icon={'save'}
                     label={'Save & Reload'}
                     loading={isSaving}
-                    disabled={isBusy}
+                    disabled={isBusy || !editable}
                     onClick={handleSave}
                 />
                 <Button
@@ -83,7 +86,7 @@ const WirelessAdvancedCard = () => {
                     label={'Reset to Defaults'}
                     variant={'outline-danger'}
                     loading={isResetting}
-                    disabled={isBusy}
+                    disabled={isBusy || !editable}
                     onClick={() => setShowResetModal(true)}
                 />
             </div>

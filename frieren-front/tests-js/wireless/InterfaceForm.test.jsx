@@ -97,6 +97,89 @@ describe('InterfaceForm', () => {
         expect(onInterfaceSaved).not.toHaveBeenCalled();
     });
 
+    it('submits Linux access points without OpenWrt-only settings', async () => {
+        const onHide = vi.fn();
+        const onInterfaceSaved = vi.fn();
+        addInterface.mockResolvedValue({ section: 'ap-test' });
+
+        render(
+            <InterfaceForm
+                radio={'wlan1'}
+                onHide={onHide}
+                defaultValues={{ ...apDefaults, network: '' }}
+                onInterfaceSaved={onInterfaceSaved}
+                linuxWireless={true}
+                wirelessModes={['sta', 'ap']}
+            />
+        );
+
+        expect(screen.getByRole('combobox', { name: 'Mode' })).toHaveDisplayValue('Access Point');
+        expect(screen.queryByLabelText('Network')).not.toBeInTheDocument();
+        expect(screen.getByLabelText('Hidden AP')).toBeInTheDocument();
+        expect(screen.queryByLabelText('Management Frame Protection')).not.toBeInTheDocument();
+        expect(screen.queryByLabelText('Management Interface')).not.toBeInTheDocument();
+        fireEvent.click(screen.getByRole('button', { name: 'Add Interface' }));
+
+        await waitFor(() => expect(addInterface).toHaveBeenCalledWith({
+            radio: 'wlan1',
+            ...apDefaults,
+            network: '',
+        }));
+        expect(onInterfaceSaved).toHaveBeenCalledWith('ap-test');
+        expect(onHide).toHaveBeenCalledTimes(1);
+    });
+
+    it('submits Linux monitor interfaces without SSID or network fields', async () => {
+        const onHide = vi.fn();
+        const onInterfaceSaved = vi.fn();
+        addInterface.mockResolvedValue({ section: 'monitor-test' });
+        const monitorDefaults = {
+            ...apDefaults,
+            ssid: '',
+            mode: 'monitor',
+            network: '',
+            encryption: '',
+        };
+
+        render(
+            <InterfaceForm
+                radio={'wlan1'}
+                onHide={onHide}
+                defaultValues={monitorDefaults}
+                onInterfaceSaved={onInterfaceSaved}
+                linuxWireless={true}
+                wirelessModes={['sta', 'monitor']}
+            />
+        );
+
+        expect(screen.queryByLabelText('Network')).not.toBeInTheDocument();
+        expect(screen.getByRole('combobox', { name: 'Mode' })).toHaveDisplayValue('Monitor');
+        fireEvent.click(screen.getByRole('button', { name: 'Add Interface' }));
+
+        await waitFor(() => expect(addInterface).toHaveBeenCalledWith({
+            radio: 'wlan1',
+            ...monitorDefaults,
+        }));
+        expect(onInterfaceSaved).toHaveBeenCalledWith('monitor-test');
+        expect(onHide).toHaveBeenCalledTimes(1);
+    });
+
+    it('keeps the current monitor mode selectable when editing a Linux monitor profile', () => {
+        render(
+            <InterfaceForm
+                section={'monitor-test'}
+                radio={'wlan1'}
+                onHide={vi.fn()}
+                defaultValues={{ ...apDefaults, ssid: '', mode: 'monitor', network: '', encryption: '' }}
+                linuxWireless={true}
+                wirelessModes={['monitor']}
+            />
+        );
+
+        expect(screen.getByRole('combobox', { name: 'Mode' })).toHaveDisplayValue('Monitor');
+        expect(screen.getByRole('option')).toHaveTextContent('Monitor');
+    });
+
     it('edits an existing interface by its UCI section instead of adding a new one', async () => {
         const onHide = vi.fn();
         const onInterfaceSaved = vi.fn();

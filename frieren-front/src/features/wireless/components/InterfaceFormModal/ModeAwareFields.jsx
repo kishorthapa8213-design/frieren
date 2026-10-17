@@ -15,7 +15,7 @@ import { IEEE80211W_OPTIONS } from '@src/features/wireless/helpers/constants.js'
 import useGetEncryptionOptions from '@src/features/wireless/hooks/useGetEncryptionOptions.js';
 import useGetNetworkInterfaces from '@src/features/wireless/hooks/useGetNetworkInterfaces.js';
 
-const ModeAwareFields = ({ radio }) => {
+const ModeAwareFields = ({ radio, linuxWireless }) => {
     // No `defaultValue` here (unlike `encryption` below): this value now gates whether
     // `useGetNetworkInterfaces` fetches at all (REQ-007). `useWatch`'s own `defaultValue`
     // literally wins on the very first render regardless of the form's real value (it only
@@ -26,7 +26,7 @@ const ModeAwareFields = ({ radio }) => {
     const mode = useWatch({ name: 'mode' });
     const encryption = useWatch({ name: 'encryption', defaultValue: 'none' });
     const currentNetworkValue = useWatch({ name: 'network' });
-    const { data, isError } = useGetNetworkInterfaces({ enabled: mode !== 'monitor' });
+    const { data, isError } = useGetNetworkInterfaces({ enabled: !linuxWireless && mode !== 'monitor' });
     const { data: encryptionData, isError: encryptionIsError } = useGetEncryptionOptions(radio, mode);
 
     // Gated on data PRESENCE (`data !== undefined`), not `isSuccess`/`isError`/`isFetching`:
@@ -88,7 +88,7 @@ const ModeAwareFields = ({ radio }) => {
                     placeholder={'Pin to a specific AP, e.g. AA:BB:CC:DD:EE:FF'}
                 />
             )}
-            <SelectField name={'network'} label={'Network'} options={networkOptions} disabled={networkDisabled} />
+            {!linuxWireless && <SelectField name={'network'} label={'Network'} options={networkOptions} disabled={networkDisabled} />}
             <SelectField
                 name={'encryption'}
                 label={'Encryption'}
@@ -98,7 +98,7 @@ const ModeAwareFields = ({ radio }) => {
             {encryption !== 'none' && (
                 <InputField name={'key'} label={'Key / Passphrase'} type={'password'} />
             )}
-            {mode === 'ap' && (
+            {mode === 'ap' && !linuxWireless && (
                 <SelectField
                     name={'ieee80211w'}
                     label={'Management Frame Protection'}
@@ -106,7 +106,7 @@ const ModeAwareFields = ({ radio }) => {
                 />
             )}
             {mode === 'ap' && <SwitchField name={'hidden'} label={'Hidden AP'} />}
-            {mode === 'ap' && (
+            {mode === 'ap' && !linuxWireless && (
                 <SwitchField name={'isManagement'} label={'Management Interface'} />
             )}
         </>
@@ -115,6 +115,7 @@ const ModeAwareFields = ({ radio }) => {
 
 ModeAwareFields.propTypes = {
     radio: PropTypes.string,
+    linuxWireless: PropTypes.bool,
 };
 
 export default ModeAwareFields;

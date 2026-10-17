@@ -43,6 +43,36 @@ For a quick and easy installation, execute the following command in your termina
 wget -qO- https://raw.githubusercontent.com/xchwarze/frieren-release/master/install/install-openwrt.sh | sh
 ```
 
+### Linux x86_64 (Debian, Ubuntu, or Kali)
+
+The Linux installer builds the frontend, configures Nginx and PHP-FPM, and enables
+the NetworkManager/systemd integrations. From a cloned Frieren repository:
+
+```bash
+sudo ./install/install-linux.sh
+```
+
+It requires x86_64, Node.js 22+, and a Debian-family distribution. The panel
+creates an `admin` login password during installation. Linux Wi-Fi client and
+access-point profiles use NetworkManager; access points use NetworkManager's
+shared IPv4 mode (DHCP/NAT) and require adapter/driver support. Monitor mode uses
+`iw` and requires the installed privileged helper plus adapter/driver support.
+Enabling a monitor profile temporarily hands that adapter from NetworkManager to
+Frieren, so do not use the host's active Wi-Fi uplink for monitor mode. Saved
+monitor profiles are restored at boot. Static DHCP leases and firmware updates
+remain OpenWrt-only. The installer does not activate
+NetworkManager automatically because changing the host's network manager can
+disconnect it. Use HTTPS before exposing the panel outside a trusted local
+network. Linux terminal sessions require a host system account; terminal
+autologin is intentionally disabled.
+Re-running the installer updates Frieren while preserving third-party modules.
+If it disables the stock Nginx default-site symlink, it saves a link to the
+original target at `/var/lib/frieren/nginx-default-enabled-target`.
+
+For local Linux development, the backend accepts `FRIEREN_AUTH_FILE` and
+`FRIEREN_SETTINGS_FILE` to keep development credentials and settings outside the
+system-owned `/var/lib/frieren` directory.
+
 > **New to this? Start here.** If you're not sure what OpenWrt is, how to flash it, or
 > how to open the panel afterwards, follow the step-by-step, beginner-friendly
 > **[Installation FAQ](FAQ.md)** — it walks you through everything from a clean device to

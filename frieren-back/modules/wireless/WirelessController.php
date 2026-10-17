@@ -171,6 +171,7 @@ class WirelessController extends \frieren\core\Controller
     {
         return self::setSuccess([
             'content' => self::setupModuleHelper()::getRawWirelessConfig(),
+            'editable' => \DeviceConfig::systemFamily() !== 'Linux',
         ]);
     }
 

@@ -85,6 +85,15 @@ const WirelessOverviewCard = () => {
         setCheckingRadio(null);
     }, []);
 
+    const selectedRadio = radios[formModal.radio];
+    const editingMode = selectedRadio?.interfaces?.find(
+        ({ section }) => section === formModal.section
+    )?.mode;
+    const wirelessModes = [...new Set([
+        ...(selectedRadio?.wirelessModes ?? []),
+        ...(editingMode ? [editingMode] : []),
+    ])];
+
     const renderContent = () => {
         if (isLoading) {
             return <WirelessOverviewSkeleton />;
@@ -128,6 +137,8 @@ const WirelessOverviewCard = () => {
                 section={formModal.section}
                 initialValues={formModal.initialValues}
                 onInterfaceSaved={handleInterfaceSaved}
+                linuxWireless={!!radios[formModal.radio]?.linuxWireless}
+                wirelessModes={wirelessModes}
             />
             {checkingSection && (
                 <InterfaceStatusNotifier

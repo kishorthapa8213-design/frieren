@@ -30,7 +30,7 @@ class ModulesController extends \frieren\core\Controller
 
     public function getModuleList()
     {
-        $moduleFolders = self::setupModuleHelper()::getModuleFolders(\DeviceConfig::MODULE_ROOT_FOLDER);
+        $moduleFolders = self::setupModuleHelper()::getModuleFolders(\DeviceConfig::moduleRootFolder());
         if ($moduleFolders === false) {
             return self::setError('Unable to access modules directory');
         }
@@ -133,7 +133,7 @@ class ModulesController extends \frieren\core\Controller
 
     public function getInstalledModules()
     {
-        $moduleRoot = \DeviceConfig::MODULE_ROOT_FOLDER;
+        $moduleRoot = \DeviceConfig::moduleRootFolder();
         $moduleFolders = self::setupModuleHelper()::getModuleFolders($moduleRoot);
         if ($moduleFolders === false) {
             return self::setError('Unable to access modules directory');
@@ -228,8 +228,8 @@ class ModulesController extends \frieren\core\Controller
         $this->removeModuleFiles($moduleName);
 
         $useSD = $this->request['destination'] === 'sd';
-        $moduleDirPath = \DeviceConfig::MODULE_ROOT_FOLDER;
-        $moduleSDDirPath = \DeviceConfig::MODULE_SD_ROOT_FOLDER;
+        $moduleDirPath = \DeviceConfig::moduleRootFolder();
+        $moduleSDDirPath = \DeviceConfig::moduleSdRootFolder();
         $safeModuleName = escapeshellarg($moduleName);
         if ($useSD) {
             @mkdir($moduleSDDirPath, 0777, true);
@@ -257,8 +257,8 @@ class ModulesController extends \frieren\core\Controller
     {
         $moduleName = $this->request['moduleName'] ?? '';
         $moduleSize = $this->request['moduleSize'];
-        $moduleDirPath = \DeviceConfig::MODULE_ROOT_FOLDER;
-        $moduleSDDirPath = \DeviceConfig::MODULE_SD_ROOT_FOLDER;
+        $moduleDirPath = \DeviceConfig::moduleRootFolder();
+        $moduleSDDirPath = \DeviceConfig::moduleSdRootFolder();
 
         $alreadyInstalled = is_dir("{$moduleDirPath}/{$moduleName}") || is_dir("{$moduleSDDirPath}/{$moduleName}");
         $validSpace = disk_free_space('/') > ($moduleSize + self::MIN_DISK_SPACE);
@@ -296,8 +296,8 @@ class ModulesController extends \frieren\core\Controller
     {
         $this->validateModuleName($moduleName);
 
-        $moduleDirPath = \DeviceConfig::MODULE_ROOT_FOLDER;
-        $moduleSDDirPath = \DeviceConfig::MODULE_SD_ROOT_FOLDER;
+        $moduleDirPath = \DeviceConfig::moduleRootFolder();
+        $moduleSDDirPath = \DeviceConfig::moduleSdRootFolder();
         $modulePath = "{$moduleDirPath}/{$moduleName}";
         $modulePathSD = "{$moduleSDDirPath}/{$moduleName}";
 

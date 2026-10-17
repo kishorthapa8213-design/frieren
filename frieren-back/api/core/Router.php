@@ -50,7 +50,7 @@ class Router {
      */
     private function loadModule($moduleName)
     {
-        $baseDir = \DeviceConfig::MODULE_ROOT_FOLDER;
+        $baseDir = \DeviceConfig::moduleRootFolder();
         $controllerName = ucfirst($moduleName) . 'Controller';
 
         // $moduleName is already restricted to /^[a-z0-9_]+$/i by routeModule(), which

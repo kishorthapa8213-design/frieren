@@ -47,6 +47,10 @@ export const interfaceSchema = yup.object({
     }),
 });
 
+export const linuxInterfaceSchema = interfaceSchema.shape({
+    network: yup.string().notRequired(),
+});
+
 export const radioConfigSchema = yup.object({
     channel: yup.string().required('Channel is mandatory'),
     txpower: yup.string().required('TX Power is mandatory'),

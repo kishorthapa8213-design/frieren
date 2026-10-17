@@ -34,6 +34,10 @@ class TerminalController extends \frieren\core\Controller
 
     private function getTerminalPath()
     {
+        if (\DeviceConfig::systemFamily() === 'Linux') {
+            return '/usr/bin/ttyd';
+        }
+
         if (OpenWrtHelper::isSDAvailable() && file_exists(self::TTYD_SD_PATH)) {
             return self::TTYD_SD_PATH;
         }
@@ -77,8 +81,37 @@ class TerminalController extends \frieren\core\Controller
 
     public function startTerminal()
     {
-        if (!SettingsHelper::isTerminalEnabled()) {
+        $settingsHelper = \frieren\helper\HelperFactory::createModuleHelper('settings', \DeviceConfig::systemFamily());
+        if (!$settingsHelper::isTerminalEnabled()) {
             return self::setError('Terminal is disabled');
+        }
+
+        if (\DeviceConfig::systemFamily() === 'Linux') {
+            $terminal = $this->getTerminalPath();
+            if (!is_executable($terminal)) {
+                return self::setError('ttyd is not installed');
+            }
+            if ($settingsHelper::getTerminalAutologin()) {
+            return self::setError('Automatic terminal login is not supported on Linux; sign in with a system account.');
+            }
+
+            $status = OpenWrtHelper::checkRunning('ttyd');
+            if (!$status) {
+            OpenWrtHelper::execBackground("sudo -n {$terminal} -p 5001 -i lo /bin/login");
+            $status = $this->waitForRunning('ttyd');
+            }
+
+            if (!$status) {
+                return self::setError('Unable to start ttyd');
+            }
+
+            return self::setSuccess([
+                'success' => true,
+                'terminalTheme' => $settingsHelper::getTerminalTheme(),
+                'fontSize' => $settingsHelper::getTerminalFontSize(),
+                'cursorStyle' => $settingsHelper::getTerminalCursorStyle(),
+                'cursorBlink' => $settingsHelper::getTerminalCursorBlink(),
+            ]);
         }
 
         // disable ttyd instance
@@ -104,10 +137,10 @@ class TerminalController extends \frieren\core\Controller
 
         $response = ["success" => $status];
         if ($status) {
-            $response['terminalTheme'] = SettingsHelper::getTerminalTheme();
-            $response['fontSize'] = SettingsHelper::getTerminalFontSize();
-            $response['cursorStyle'] = SettingsHelper::getTerminalCursorStyle();
-            $response['cursorBlink'] = SettingsHelper::getTerminalCursorBlink();
+            $response['terminalTheme'] = $settingsHelper::getTerminalTheme();
+            $response['fontSize'] = $settingsHelper::getTerminalFontSize();
+            $response['cursorStyle'] = $settingsHelper::getTerminalCursorStyle();
+            $response['cursorBlink'] = $settingsHelper::getTerminalCursorBlink();
         }
 
         self::setSuccess($response);
@@ -115,8 +148,14 @@ class TerminalController extends \frieren\core\Controller
 
     public function stopTerminal()
     {
-        if (!SettingsHelper::isTerminalEnabled()) {
+        $settingsHelper = \frieren\helper\HelperFactory::createModuleHelper('settings', \DeviceConfig::systemFamily());
+        if (!$settingsHelper::isTerminalEnabled()) {
             return self::setError('Terminal is disabled');
+        }
+
+        if (\DeviceConfig::systemFamily() === 'Linux') {
+            OpenWrtHelper::exec('sudo -n /usr/bin/pkill -x ttyd');
+            return self::setSuccess(['success' => !OpenWrtHelper::checkRunning('ttyd')]);
         }
 
         OpenWrtHelper::exec("/usr/bin/killall ttyd");
@@ -130,10 +169,12 @@ class TerminalController extends \frieren\core\Controller
 
     public function getStatus()
     {
-        if (!SettingsHelper::isTerminalEnabled()) {
+        $settingsHelper = \frieren\helper\HelperFactory::createModuleHelper('settings', \DeviceConfig::systemFamily());
+        if (!$settingsHelper::isTerminalEnabled()) {
             return self::setSuccess(["status" => false]);
         }
 
-        self::setSuccess(["status" => OpenWrtHelper::checkRunning($this->getTerminalPath())]);
+        $process = \DeviceConfig::systemFamily() === 'Linux' ? 'ttyd' : $this->getTerminalPath();
+        self::setSuccess(["status" => OpenWrtHelper::checkRunning($process)]);
     }
 }

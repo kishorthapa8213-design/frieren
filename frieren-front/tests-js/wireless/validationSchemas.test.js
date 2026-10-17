@@ -3,7 +3,7 @@
  * Copyright (C) 2026 DSR! <xchwarze@gmail.com>
  * SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
  */
-import { interfaceSchema, radioConfigSchema } from '@src/features/wireless/helpers/validationSchemas.js';
+import { interfaceSchema, linuxInterfaceSchema, radioConfigSchema } from '@src/features/wireless/helpers/validationSchemas.js';
 
 describe('interfaceSchema', () => {
     const apValues = {
@@ -28,6 +28,13 @@ describe('interfaceSchema', () => {
 
     it('accepts a fully populated ap configuration', async () => {
         expect(await interfaceSchema.isValid(apValues)).toBe(true);
+    });
+
+    it('allows Linux station profiles without a UCI network while preserving the OpenWrt requirement', async () => {
+        const stationValues = { ...apValues, mode: 'sta', ssid: 'uplink', network: '' };
+
+        expect(await linuxInterfaceSchema.isValid(stationValues)).toBe(true);
+        expect(await interfaceSchema.isValid(stationValues)).toBe(false);
     });
 
     it('drops the ssid/network/encryption requirement in monitor mode', async () => {

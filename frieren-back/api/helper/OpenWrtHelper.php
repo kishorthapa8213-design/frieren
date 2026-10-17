@@ -132,7 +132,7 @@ class OpenWrtHelper implements HelperInterface
      */
     public static function installDependency($dependencies, $installToSD = false, $taskName = 'module-dependencies') {
         if (!empty($dependencies)) {
-            $scriptPath = \DeviceConfig::MODULE_ROOT_FOLDER . '/packages/bin/dependency-installer.sh';
+            $scriptPath = \DeviceConfig::moduleRootFolder() . '/packages/bin/dependency-installer.sh';
             $dest = $installToSD ? '--dest sd ' : '';
             $escapedDeps = implode(' ', array_map('escapeshellarg', explode(' ', $dependencies)));
             $command = sprintf('%s %s%s', $scriptPath, $dest, $escapedDeps);

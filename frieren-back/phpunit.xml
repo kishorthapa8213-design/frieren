@@ -14,4 +14,7 @@
             <directory>api</directory>
         </include>
     </source>
+    <php>
+        <env name="FRIEREN_SYSTEM_FAMILY" value="OpenWrt" force="true"/>
+    </php>
 </phpunit>

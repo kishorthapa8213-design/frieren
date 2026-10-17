@@ -48,6 +48,24 @@ describe('WirelessAdvancedCard', () => {
         expect(textarea()).toHaveValue('config wifi-device radio0\n');
     });
 
+    it('shows Linux NetworkManager guidance and disables unsupported raw config actions', () => {
+        useGetRawWirelessConfig.mockReturnValue({
+            data: {
+                content: 'Linux uses NetworkManager profiles. OpenWrt UCI wireless configuration is not available on this platform.',
+                editable: false,
+            },
+            isFetching: false,
+            refetch,
+        });
+
+        render(<WirelessAdvancedCard />);
+
+        expect(screen.getByText('Raw UCI wireless configuration is unavailable on Linux. Manage Wi-Fi using the Overview tab.')).toBeInTheDocument();
+        expect(textarea()).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Save & Reload' })).toBeDisabled();
+        expect(screen.getByRole('button', { name: 'Reset to Defaults' })).toBeDisabled();
+    });
+
     it('keeps local edits across a background refetch that returns the same content', () => {
         const { rerender } = render(<WirelessAdvancedCard />);
 

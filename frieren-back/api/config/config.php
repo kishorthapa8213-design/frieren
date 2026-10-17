@@ -8,7 +8,7 @@
 
 class DeviceConfig
 {
-    // This flag tells the framework which helpers to use depending on which host variant is running the project
+    // Retained for compatibility with existing OpenWrt deployments.
     const GUESS_TYPE = 'OpenWrt';
 
 
@@ -25,4 +25,54 @@ class DeviceConfig
     const MODULE_JSON_PATH = '%s/json/modules.json';
     const MODULE_PACKAGE_PATH = '%s/modules/%s';
     const NEWS_JSON_PATH = '%s/json/news.json';
+
+    public static function systemFamily()
+    {
+        $configured = getenv('FRIEREN_SYSTEM_FAMILY');
+        if ($configured !== false && in_array($configured, ['OpenWrt', 'Linux'], true)) {
+            return $configured;
+        }
+
+        if (is_file('/etc/openwrt_release')) {
+            return 'OpenWrt';
+        }
+
+        if (PHP_OS_FAMILY === 'Linux') {
+            $release = is_readable('/etc/os-release') ? file_get_contents('/etc/os-release') : '';
+            preg_match('/^ID="?([^"\n]+)"?$/m', $release, $idMatch);
+            preg_match('/^ID_LIKE="?([^"\n]*)"?$/m', $release, $likeMatch);
+            $distribution = strtolower($idMatch[1] ?? '');
+            $like = strtolower($likeMatch[1] ?? '');
+            if (in_array($distribution, ['debian', 'ubuntu', 'kali'], true)
+                || preg_match('/(^|\s)(debian|ubuntu)(\s|$)/', $like)) {
+                return 'Linux';
+            }
+
+            throw new \RuntimeException('Frieren supports Linux only on Debian, Ubuntu, and Kali.');
+        }
+
+        return 'OpenWrt';
+    }
+
+    public static function moduleRootFolder()
+    {
+        $configured = getenv('FRIEREN_MODULE_ROOT');
+        if ($configured !== false && $configured !== '') {
+            return rtrim($configured, '/');
+        }
+
+        return self::systemFamily() === 'Linux'
+            ? dirname(__DIR__, 2) . '/modules'
+            : self::MODULE_ROOT_FOLDER;
+    }
+
+    public static function moduleSdRootFolder()
+    {
+        $configured = getenv('FRIEREN_MODULE_SD_ROOT');
+        if ($configured !== false && $configured !== '') {
+            return rtrim($configured, '/');
+        }
+
+        return self::systemFamily() === 'Linux' ? '/media/frieren/modules' : self::MODULE_SD_ROOT_FOLDER;
+    }
 }

@@ -26,7 +26,11 @@ class LoginController extends \frieren\core\Controller
                 // login (these gadgets have no RTC). Runs only after auth succeeds
                 // and never affects the login result.
                 if (isset($this->request['datetime'], $this->request['timezone'])) {
-                    \frieren\modules\settings\ModuleOpenWrtHelper::applyBrowserDatetime(
+                    $settingsHelper = \frieren\helper\HelperFactory::createModuleHelper(
+                        'settings',
+                        \DeviceConfig::systemFamily()
+                    );
+                    $settingsHelper::applyBrowserDatetime(
                         $this->request['datetime'],
                         $this->request['timezone']
                     );

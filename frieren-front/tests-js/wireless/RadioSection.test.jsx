@@ -115,6 +115,20 @@ describe('RadioSection', () => {
         expect(screen.getByText('Disabled')).toBeInTheDocument();
     });
 
+    it('prevents adding profiles to a Linux adapter while a monitor profile is active', () => {
+        renderSection({
+            radio: {
+                ...baseRadio,
+                linuxWireless: true,
+                interfaces: [
+                    { section: 'monitor0', ifname: 'wlan1', mode: 'monitor', disabled: false, up: true },
+                ],
+            },
+        });
+
+        expect(screen.getByTitle('Add interface')).toBeDisabled();
+    });
+
     it('clarifies that a down interface is down because its radio is disabled, not its own config', () => {
         renderSection({
             radio: {

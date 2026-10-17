@@ -15,14 +15,20 @@ import SwitchField from '@src/components/Form/SwitchField';
 import SubmitButton from '@src/components/Form/SubmitButton';
 import FormActions from '@src/components/FormActions';
 import { MODE_OPTIONS } from '@src/features/wireless/helpers/constants.js';
-import { interfaceSchema } from '@src/features/wireless/helpers/validationSchemas.js';
+import { interfaceSchema, linuxInterfaceSchema } from '@src/features/wireless/helpers/validationSchemas.js';
 import useAddInterface from '@src/features/wireless/hooks/useAddInterface.js';
 import useSetInterfaceConfig from '@src/features/wireless/hooks/useSetInterfaceConfig.js';
 import ModeAwareFields from './ModeAwareFields';
 import NetworkZoneWarning from './NetworkZoneWarning';
 
-const InterfaceForm = ({ radio, section, onHide, defaultValues, onInterfaceSaved }) => {
+const InterfaceForm = ({ radio, section, onHide, defaultValues, onInterfaceSaved, linuxWireless, wirelessModes }) => {
     const isEditMode = !!section;
+    const supportedModeOptions = wirelessModes
+        ? MODE_OPTIONS.filter(({ value }) => wirelessModes.includes(value))
+        : MODE_OPTIONS;
+    const modeOptions = linuxWireless && isEditMode
+        ? supportedModeOptions.filter(({ value }) => value === defaultValues.mode)
+        : supportedModeOptions;
     const { mutateAsync: addInterface } = useAddInterface();
     const { mutateAsync: setInterfaceConfig } = useSetInterfaceConfig();
 
@@ -42,11 +48,11 @@ const InterfaceForm = ({ radio, section, onHide, defaultValues, onInterfaceSaved
     return (
         <FormProvider
             autoComplete={'off'}
-            schema={interfaceSchema}
+            schema={linuxWireless ? linuxInterfaceSchema : interfaceSchema}
             onSubmit={handleSubmit}
             defaultValues={defaultValues}
         >
-            <NetworkZoneWarning />
+            {!linuxWireless && <NetworkZoneWarning />}
             <ReadOnlyField
                 label={isEditMode ? 'Section' : 'Radio'}
                 value={isEditMode ? section : radio}
@@ -54,9 +60,14 @@ const InterfaceForm = ({ radio, section, onHide, defaultValues, onInterfaceSaved
             <SelectField
                 name={'mode'}
                 label={'Mode'}
-                options={MODE_OPTIONS}
+                options={modeOptions}
             />
-            <ModeAwareFields radio={radio} />
+            {linuxWireless && isEditMode && (
+                <div className={'text-body-secondary small mb-2'}>
+                    Remove and add the interface again to change between client and monitor modes.
+                </div>
+            )}
+            <ModeAwareFields radio={radio} linuxWireless={linuxWireless} />
             <SwitchField
                 name={'disabled'}
                 label={'Disabled'}
@@ -75,6 +86,8 @@ InterfaceForm.propTypes = {
     onHide: PropTypes.func.isRequired,
     defaultValues: PropTypes.object.isRequired,
     onInterfaceSaved: PropTypes.func,
+    linuxWireless: PropTypes.bool,
+    wirelessModes: PropTypes.arrayOf(PropTypes.string),
 };
 
 export default InterfaceForm;

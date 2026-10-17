@@ -32,7 +32,7 @@ const ADD_DEFAULTS = {
     bssid: '',
 };
 
-const InterfaceFormLoader = ({ radio, section, onHide, initialValues, onInterfaceSaved }) => {
+const InterfaceFormLoader = ({ radio, section, onHide, initialValues, onInterfaceSaved, linuxWireless, wirelessModes }) => {
     const { data: interfaceConfig, isFetching } = useGetInterfaceConfig(section);
 
     if (isFetching) {
@@ -57,7 +57,7 @@ const InterfaceFormLoader = ({ radio, section, onHide, initialValues, onInterfac
             ieee80211w: interfaceConfig?.ieee80211w || '0',
             bssid: interfaceConfig?.bssid ?? '',
         }
-        : (initialValues || ADD_DEFAULTS);
+        : (initialValues || { ...ADD_DEFAULTS, ...(linuxWireless ? { mode: 'sta' } : {}) });
 
     return (
         <InterfaceForm
@@ -66,6 +66,8 @@ const InterfaceFormLoader = ({ radio, section, onHide, initialValues, onInterfac
             onHide={onHide}
             defaultValues={defaultValues}
             onInterfaceSaved={onInterfaceSaved}
+            linuxWireless={linuxWireless}
+            wirelessModes={wirelessModes}
         />
     );
 };
@@ -76,6 +78,8 @@ InterfaceFormLoader.propTypes = {
     onHide: PropTypes.func.isRequired,
     initialValues: PropTypes.object,
     onInterfaceSaved: PropTypes.func,
+    linuxWireless: PropTypes.bool,
+    wirelessModes: PropTypes.arrayOf(PropTypes.string),
 };
 
 export default InterfaceFormLoader;

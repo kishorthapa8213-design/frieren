@@ -1165,6 +1165,7 @@ class WirelessControllerTest extends TestCase
         $this->assertNull($result['error']);
         $this->assertSame([
             'content' => "\nconfig wifi-device 'radio0'\n\toption type 'mac80211'\n",
+            'editable' => true,
         ], $result['data']);
     }
 
@@ -1176,7 +1177,7 @@ class WirelessControllerTest extends TestCase
         $result = $this->dispatch(WirelessController::class, 'wireless', ['action' => 'getRawWirelessConfig']);
 
         $this->assertNull($result['error']);
-        $this->assertSame(['content' => ''], $result['data']);
+        $this->assertSame(['content' => '', 'editable' => true], $result['data']);
     }
 
     public function testSetRawWirelessConfigWritesTheFileAndReloadsWifiInTheBackground(): void
