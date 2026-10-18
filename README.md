@@ -45,18 +45,26 @@ wget -qO- https://raw.githubusercontent.com/xchwarze/frieren-release/master/inst
 
 ### Linux x86_64 (Debian, Ubuntu, or Kali)
 
-The Linux installer builds the frontend, configures Nginx and PHP-FPM, and enables
-the NetworkManager/systemd integrations. From a cloned Frieren repository:
+The Linux installer builds the terminal library and frontend, configures Nginx
+and PHP-FPM, and enables the NetworkManager/systemd integrations. From a cloned
+Frieren repository:
 
 ```bash
 sudo ./install/install-linux.sh
 ```
+
+After installation, open the dashboard at `http://<server-IP>/#/dashboard`.
+The Linux installer uses HTTP port 80 by default, so no port number is needed;
+on the server itself, use `http://localhost/#/dashboard`.
 
 It requires x86_64, Node.js 22+, and a Debian-family distribution. The panel
 creates an `admin` login password during installation. Linux Wi-Fi client and
 access-point profiles use NetworkManager; access points use NetworkManager's
 shared IPv4 mode (DHCP/NAT) and require adapter/driver support. Monitor mode uses
 `iw` and requires the installed privileged helper plus adapter/driver support.
+The installer downloads ttyd 1.7.7 from its upstream release and verifies the
+SHA-256 checksum, since ttyd is not available in all supported distribution
+repositories.
 Enabling a monitor profile temporarily hands that adapter from NetworkManager to
 Frieren, so do not use the host's active Wi-Fi uplink for monitor mode. Saved
 monitor profiles are restored at boot. Static DHCP leases and firmware updates

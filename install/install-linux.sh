@@ -58,7 +58,21 @@ apt-get update
 apt-get install -y \
     ca-certificates curl git iproute2 iputils-ping iw nginx network-manager \
     nodejs php-cli php-curl php-fpm php-mbstring php-sqlite3 php-xml \
-    rsync sudo traceroute usbutils ttyd
+    rsync sudo traceroute usbutils
+
+TTYD_VERSION=1.7.7
+TTYD_SHA256=8a217c968aba172e0dbf3f34447218dc015bc4d5e59bf51db2f2cd12b7be4f55
+TTYD_TMP=$(mktemp)
+if ! curl -fsSL "https://github.com/tsl0922/ttyd/releases/download/${TTYD_VERSION}/ttyd.x86_64" -o "$TTYD_TMP"; then
+    rm -f "$TTYD_TMP"
+    fail "unable to download ttyd ${TTYD_VERSION}"
+fi
+if ! printf '%s  %s\n' "$TTYD_SHA256" "$TTYD_TMP" | sha256sum --check --status; then
+    rm -f "$TTYD_TMP"
+    fail "ttyd ${TTYD_VERSION} checksum verification failed"
+fi
+install -o root -g root -m 0755 "$TTYD_TMP" /usr/bin/ttyd
+rm -f "$TTYD_TMP"
 
 NODE_VERSION=$(node --version 2>/dev/null || true)
 NODE_MAJOR=$(printf '%s' "$NODE_VERSION" | sed 's/^v//' | cut -d. -f1)
@@ -83,6 +97,10 @@ rsync -a --delete \
     --exclude='dist/' \
     --exclude='.phpunit.cache/' \
     "$SOURCE_DIR/" "$INSTALL_DIR/"
+
+cd "$INSTALL_DIR/frieren-terminal"
+corepack yarn install --frozen-lockfile
+corepack yarn build
 
 cd "$INSTALL_DIR/frieren-front"
 corepack yarn install --immutable
