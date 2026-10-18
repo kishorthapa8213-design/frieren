@@ -87,6 +87,10 @@ composer test        # or: vendor/bin/phpunit
   `apt-get`, NetworkManager shared/NAT Wi-Fi access points, and `iw` plus the
   installed privileged helper for supported monitor-mode adapters. It uses a
   separately provisioned `/var/lib/frieren` settings/auth store.
+- Third-party module manifests may use `linuxDependencies` for Debian-family package
+  names; otherwise Linux falls back to `dependencies`. The Linux installer provisions
+  the package manager and module-specific privileges for supported capture, firewall,
+  hosts-file, and fstab features.
 - Other dependencies that you may need are: php7-mod-hash, php7-mod-json, php7-mod-mbstring, php7-mod-session, php7-mod-sqlite3, coreutils-nohup, uclient-fetch, usbutils, ttyd
 
 ## Contributing

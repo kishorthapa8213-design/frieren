@@ -56,9 +56,9 @@ echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.no
     >/etc/apt/sources.list.d/nodesource.list
 apt-get update
 apt-get install -y \
-    ca-certificates curl git iproute2 iputils-ping iw nginx network-manager \
+    ca-certificates curl git iproute2 iptables iputils-ping iw nginx network-manager \
     nodejs php-cli php-curl php-fpm php-mbstring php-sqlite3 php-xml \
-    rsync sudo traceroute usbutils
+    rsync sudo traceroute usbutils libcap2-bin
 
 TTYD_VERSION=1.7.7
 TTYD_SHA256=8a217c968aba172e0dbf3f34447218dc015bc4d5e59bf51db2f2cd12b7be4f55
@@ -131,6 +131,13 @@ www-data ALL=(root) NOPASSWD: /usr/bin/timedatectl *
 www-data ALL=(root) NOPASSWD: /usr/bin/date *
 www-data ALL=(root) NOPASSWD: /usr/bin/ttyd *
 www-data ALL=(root) NOPASSWD: /usr/bin/pkill -x ttyd
+www-data ALL=(root) NOPASSWD: /usr/sbin/iptables *
+www-data ALL=(root) NOPASSWD: /usr/sbin/iptables-save
+www-data ALL=(root) NOPASSWD: /usr/sbin/iptables-restore
+www-data ALL=(root) NOPASSWD: /usr/sbin/sysctl -w net.ipv4.ip_forward=0, /usr/sbin/sysctl -w net.ipv4.ip_forward=1
+www-data ALL=(root) NOPASSWD: /usr/bin/nmap *
+www-data ALL=(root) NOPASSWD: /usr/bin/pkill -9 -x nmap
+www-data ALL=(root) NOPASSWD: /usr/bin/tee /etc/hosts, /usr/bin/tee /etc/fstab
 EOF
 chmod 0440 "$SUDOERS_FILE"
 visudo -cf "$SUDOERS_FILE" >/dev/null || fail "invalid sudoers configuration"

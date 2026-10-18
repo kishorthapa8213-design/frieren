@@ -151,7 +151,7 @@ abstract class Controller
      */
     public function checkModuleDependencies() {
         $manifest = $this->getModuleManifest();
-        $dependencies = $manifest['dependencies'] ?? false;
+        $dependencies = $this->getModuleDependencies($manifest);
         if (!empty($dependencies)) {
             $check = self::setupCoreHelper()::checkDependency($dependencies);
             if (is_string($check)) {
@@ -174,7 +174,7 @@ abstract class Controller
      */
     public function installModuleDependencies() {
         $manifest = $this->getModuleManifest();
-        $dependencies = implode(' ', $manifest['dependencies'] ?? []);
+        $dependencies = implode(' ', $this->getModuleDependencies($manifest));
         if (empty($dependencies)) {
             return self::setError();
         }
@@ -205,10 +205,28 @@ abstract class Controller
 
         if ($status['completed']) {
             $manifest = $this->getModuleManifest();
-            $status['hasDependencies'] = self::setupCoreHelper()::checkDependency($manifest['dependencies'] ?? []) === true;
+            $status['hasDependencies'] = self::setupCoreHelper()::checkDependency(
+                $this->getModuleDependencies($manifest)
+            ) === true;
         }
 
         return self::setSuccess($status);
+    }
+
+    /**
+     * Return package names for the active platform when the manifest provides a
+     * platform-specific list; legacy `dependencies` remains the OpenWrt default.
+     *
+     * @param array $manifest
+     * @return array
+     */
+    private function getModuleDependencies($manifest)
+    {
+        if (\DeviceConfig::systemFamily() === 'Linux' && array_key_exists('linuxDependencies', $manifest)) {
+            return is_array($manifest['linuxDependencies']) ? $manifest['linuxDependencies'] : [];
+        }
+
+        return is_array($manifest['dependencies'] ?? null) ? $manifest['dependencies'] : [];
     }
 
     /**
@@ -220,6 +238,16 @@ abstract class Controller
     protected function getConfig($section = '@settings[0]')
     {
         self::setupCoreHelper();
+
+        if (\DeviceConfig::systemFamily() === 'Linux') {
+            $config = $this->coreHelper::uciGetJson("fmod_{$this->moduleName}", false);
+            if (is_null($section)) {
+                return $config;
+            }
+
+            return $config[$section] ?? [];
+        }
+
         $configName = "fmod_{$this->moduleName}";
 
         // Module config file is created lazily on first setConfig(); until then there is
@@ -247,6 +275,16 @@ abstract class Controller
     protected function setConfig($values, $section = '@settings[0]')
     {
         self::setupCoreHelper();
+
+        if (\DeviceConfig::systemFamily() === 'Linux') {
+            $configName = "fmod_{$this->moduleName}";
+            $config = $this->coreHelper::uciGetJson($configName, false);
+            $sectionValues = $config[$section] ?? [];
+            $config[$section] = array_merge($sectionValues, $values);
+            $this->coreHelper::uciSetJson($configName, $config);
+
+            return;
+        }
 
         $configName = "fmod_{$this->moduleName}";
         if (!file_exists("/etc/config/{$configName}")) {

@@ -116,8 +116,9 @@ The manifest is your module's contract with the panel. Run `yarn validate` to ch
 | `documentation` | no | Docs/readme URL; shown as a button in the panel when present. |
 | `license` | no | SPDX id (e.g. `LGPL-3.0-or-later`). |
 | `keywords` | no | String array. |
-| `guestType` | no | Platforms: `OpenWrt` and/or `RaspberryPi`. |
-| `dependencies` | no | opkg packages for the install handshake. |
+| `guestType` | no | Platforms: `OpenWrt`, `RaspberryPi`, and/or Debian-family `Linux`. |
+| `dependencies` | no | OpenWrt package names for the install handshake. |
+| `linuxDependencies` | no | Debian/Ubuntu/Kali package names for Linux; when present, replaces `dependencies` on Linux. |
 | `minPanelVersion` | no | Minimum panel version (semver). The panel blocks install + shows a notice if it is older. |
 | `system` | yes | `false` for third-party modules. |
 | `forceSidebar` | yes | Show in the sidebar by default. |

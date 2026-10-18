@@ -74,6 +74,14 @@ disconnect it. Use HTTPS before exposing the panel outside a trusted local
 network. Linux terminal sessions require a host system account; terminal
 autologin is intentionally disabled. The Linux terminal proxy allows WebSocket
 connections to remain idle for up to one year before timing out.
+
+Third-party module dependencies use Debian package names where a manifest
+provides `linuxDependencies`. Linux provisions the required iptables access,
+and its package manager assigns network-capture capabilities to tcpdump and
+hcxdumptool after installation. Nmap uses the installer-managed sudoers
+allowlist for raw network scans. Capture and scan history is stored in each
+module's `data/` directory rather than `/root`.
+
 Re-running the installer updates Frieren while preserving third-party modules.
 If it disables the stock Nginx default-site symlink, it saves a link to the
 original target at `/var/lib/frieren/nginx-default-enabled-target`.

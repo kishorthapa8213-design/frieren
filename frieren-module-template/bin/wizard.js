@@ -68,9 +68,11 @@ const promptUser = async () => {
         choices: [
             { name: 'OpenWrt', value: 'OpenWrt' },
             { name: 'RaspberryPi', value: 'RaspberryPi' },
+            { name: 'Linux', value: 'Linux' },
         ],
     });
     const dependenciesString = await input({ message: 'Extra dependencies (comma separated):' });
+    const linuxDependenciesString = await input({ message: 'Linux package dependencies (comma separated, optional):' });
     const minPanelVersion = await promptWithValidation('Minimum panel version (x.y.z, optional):', optionalSemverSchema, { default: '1.0.0' });
     const forceSidebar = await confirm({ message: 'Show in the sidebar by default?', default: false });
 
@@ -86,6 +88,7 @@ const promptUser = async () => {
         license,
         guestType,
         dependencies: toList(dependenciesString),
+        linuxDependencies: toList(linuxDependenciesString),
         minPanelVersion,
         forceSidebar,
     };
@@ -135,6 +138,7 @@ const buildManifest = (data) => {
     }
     manifest.guestType = data.guestType;
     manifest.dependencies = data.dependencies;
+    manifest.linuxDependencies = data.linuxDependencies;
     if (data.minPanelVersion) {
         manifest.minPanelVersion = data.minPanelVersion;
     }

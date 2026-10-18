@@ -8,6 +8,18 @@ if command -v apt-get >/dev/null 2>&1; then
 		"$@"
 	}
 
+	apply_capture_capabilities() {
+		if ! command -v setcap >/dev/null 2>&1; then
+			echo "setcap is unavailable; install libcap2-bin and rerun the package action." >&2
+			return 1
+		fi
+
+		for binary in tcpdump hcxdumptool; do
+			binary_path=$(command -v "$binary" 2>/dev/null) || continue
+			run_root setcap 'cap_net_admin,cap_net_raw+eip' "$binary_path" || return $?
+		done
+	}
+
 	perform_apt_action() {
 		flock -x 200 || return 1
 		case "$action" in
@@ -15,7 +27,8 @@ if command -v apt-get >/dev/null 2>&1; then
 				run_root apt-get -y update
 			;;
 			upgrade)
-				run_root apt-get -y upgrade
+				run_root apt-get -y upgrade || return $?
+				apply_capture_capabilities
 			;;
 			install)
 				[ -n "$packages" ] || { echo "No package specified." >&2; return 2; }
@@ -24,7 +37,8 @@ if command -v apt-get >/dev/null 2>&1; then
 				for package in $packages; do
 					set -- "$@" "$package"
 				done
-				run_root apt-get -y install "$@"
+				run_root apt-get -y install "$@" || return $?
+				apply_capture_capabilities
 			;;
 			remove)
 				[ -n "$packages" ] || { echo "No package specified." >&2; return 2; }
