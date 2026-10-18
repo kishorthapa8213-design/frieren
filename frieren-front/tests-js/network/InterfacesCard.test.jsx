@@ -81,7 +81,9 @@ describe('InterfacesCard', () => {
 
         render(<InterfacesCard />);
 
-        expect(screen.getByText('No interfaces found.')).toBeInTheDocument();
+        expect(screen.getByText(
+            'No Ethernet interfaces found. Wi-Fi connections are managed from the Wireless page.'
+        )).toBeInTheDocument();
     });
 
     it('brings an up interface down', () => {

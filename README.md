@@ -72,7 +72,8 @@ remain OpenWrt-only. The installer does not activate
 NetworkManager automatically because changing the host's network manager can
 disconnect it. Use HTTPS before exposing the panel outside a trusted local
 network. Linux terminal sessions require a host system account; terminal
-autologin is intentionally disabled.
+autologin is intentionally disabled. The Linux terminal proxy allows WebSocket
+connections to remain idle for up to one year before timing out.
 Re-running the installer updates Frieren while preserving third-party modules.
 If it disables the stock Nginx default-site symlink, it saves a link to the
 original target at `/var/lib/frieren/nginx-default-enabled-target`.

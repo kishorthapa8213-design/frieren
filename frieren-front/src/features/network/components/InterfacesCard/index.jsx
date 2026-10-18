@@ -140,7 +140,9 @@ const InterfacesCard = () => {
                     })}
                     {interfaces.length === 0 && (
                         <tr>
-                            <td colSpan={8}>No interfaces found.</td>
+                            <td colSpan={8}>
+                                No Ethernet interfaces found. Wi-Fi connections are managed from the Wireless page.
+                            </td>
                         </tr>
                     )}
                 </tbody>

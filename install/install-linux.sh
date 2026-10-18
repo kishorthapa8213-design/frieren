@@ -209,7 +209,8 @@ server {
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host \$host;
-        proxy_read_timeout 3600s;
+        proxy_read_timeout 365d;
+        proxy_send_timeout 365d;
     }
 
     location ~ \\.php$ {
