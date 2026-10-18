@@ -97,8 +97,8 @@ class TerminalController extends \frieren\core\Controller
 
             $status = OpenWrtHelper::checkRunning('ttyd');
             if (!$status) {
-            OpenWrtHelper::execBackground("sudo -n {$terminal} -p 5001 -i lo /bin/login");
-            $status = $this->waitForRunning('ttyd');
+                OpenWrtHelper::execBackground("sudo -n {$terminal} -W -p 5001 -i lo /bin/login");
+                $status = $this->waitForRunning('ttyd');
             }
 
             if (!$status) {
