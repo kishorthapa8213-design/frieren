@@ -95,7 +95,24 @@ class TerminalController extends \frieren\core\Controller
             return self::setError('Automatic terminal login is not supported on Linux; sign in with a system account.');
             }
 
-            $status = OpenWrtHelper::checkRunning('ttyd');
+            $processes = OpenWrtHelper::exec('/usr/bin/pgrep -a -x ttyd', false, true);
+            $status = is_array($processes) && !empty($processes);
+            $writable = $status;
+            foreach ($processes ?: [] as $process) {
+                if (!preg_match('/(?:^|\s)(?:-W|--writable)(?:\s|$)/', $process)) {
+                    $writable = false;
+                    break;
+                }
+            }
+
+            if ($status && !$writable) {
+                OpenWrtHelper::exec('sudo -n /usr/bin/pkill -x ttyd');
+                $status = OpenWrtHelper::checkRunning('ttyd');
+                if ($status) {
+                    return self::setError('Unable to restart ttyd with writable input enabled');
+                }
+            }
+
             if (!$status) {
                 OpenWrtHelper::execBackground("sudo -n {$terminal} -W -p 5001 -i lo /bin/login");
                 $status = $this->waitForRunning('ttyd');
