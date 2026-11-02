@@ -14,9 +14,13 @@ import { fireEvent, render, screen, within } from '@testing-library/react';
 import RadioSection from '@src/features/wireless/components/WirelessOverviewCard/RadioSection.jsx';
 import useRemoveInterface from '@src/features/wireless/hooks/useRemoveInterface.js';
 import useToggleInterface from '@src/features/wireless/hooks/useToggleInterface.js';
+import useSetUsbDeviceManaged from '@src/features/wireless/hooks/useSetUsbDeviceManaged.js';
+import useSetAircrackMonitorMode from '@src/features/wireless/hooks/useSetAircrackMonitorMode.js';
 
 vi.mock('@src/features/wireless/hooks/useRemoveInterface.js', () => ({ default: vi.fn() }));
 vi.mock('@src/features/wireless/hooks/useToggleInterface.js', () => ({ default: vi.fn() }));
+vi.mock('@src/features/wireless/hooks/useSetUsbDeviceManaged.js', () => ({ default: vi.fn() }));
+vi.mock('@src/features/wireless/hooks/useSetAircrackMonitorMode.js', () => ({ default: vi.fn() }));
 
 const baseRadio = {
     band: '5GHz',
@@ -34,6 +38,8 @@ const baseRadio = {
 
 const removeInterface = vi.fn();
 const toggleInterface = vi.fn();
+const setUsbDeviceManaged = vi.fn();
+const setAircrackMonitorMode = vi.fn();
 
 const noop = () => {};
 const renderSection = (overrides = {}) => render(
@@ -56,8 +62,12 @@ describe('RadioSection', () => {
     beforeEach(() => {
         removeInterface.mockReset();
         toggleInterface.mockReset();
+        setUsbDeviceManaged.mockReset();
+        setAircrackMonitorMode.mockReset();
         useRemoveInterface.mockReturnValue({ mutate: removeInterface, isPending: false });
         useToggleInterface.mockReturnValue({ mutate: toggleInterface, isPending: false });
+        useSetUsbDeviceManaged.mockReturnValue({ mutate: setUsbDeviceManaged, isPending: false });
+        useSetAircrackMonitorMode.mockReturnValue({ mutate: setAircrackMonitorMode, isPending: false });
     });
 
     it('renders the radio header and each interface row with its raw values', () => {
@@ -102,6 +112,83 @@ describe('RadioSection', () => {
 
         expect(screen.getByText(/MediaTek MT7615E/)).toBeInTheDocument();
         expect(screen.queryByText(/MediaTek MT7615E \(USB\)/)).not.toBeInTheDocument();
+    });
+
+    it('shows a separate NetworkManager control for Linux USB Wi-Fi adapters', () => {
+        renderSection({
+            radio: {
+                ...baseRadio,
+                linuxWireless: true,
+                isUsb: true,
+                networkManagerManaged: true,
+            },
+        });
+
+        const control = screen.getByRole('checkbox', {
+            name: 'NetworkManager manages this USB adapter',
+        });
+        expect(control).toBeChecked();
+
+        fireEvent.click(control);
+
+        expect(setUsbDeviceManaged).toHaveBeenCalledWith({
+            device: 'radio0',
+            managed: false,
+        });
+    });
+
+    it('hides the NetworkManager control for built-in Linux Wi-Fi adapters', () => {
+        renderSection({
+            radio: {
+                ...baseRadio,
+                linuxWireless: true,
+                isUsb: false,
+            },
+        });
+
+        expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    });
+
+    it('starts airmon-ng monitor mode for a disconnected Linux Wi-Fi adapter', () => {
+        renderSection({
+            radio: { ...baseRadio, linuxWireless: true, up: false },
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: 'Start Monitor' }));
+
+        expect(setAircrackMonitorMode).toHaveBeenCalledWith({
+            device: 'radio0',
+            enabled: true,
+        });
+    });
+
+    it('stops airmon-ng monitor mode and shows its monitor interface name', () => {
+        renderSection({
+            radio: {
+                ...baseRadio,
+                linuxWireless: true,
+                up: true,
+                aircrackMonitorInterface: 'radio0mon',
+            },
+        });
+
+        const stopButton = screen.getByRole('button', { name: 'Stop Monitor' });
+        expect(stopButton).toHaveAttribute('title', 'Stop airmon-ng monitor mode (radio0mon)');
+        expect(stopButton).toBeEnabled();
+        fireEvent.click(stopButton);
+
+        expect(setAircrackMonitorMode).toHaveBeenCalledWith({
+            device: 'radio0',
+            enabled: false,
+        });
+    });
+
+    it('disables airmon-ng monitor mode while the adapter is connected', () => {
+        renderSection({
+            radio: { ...baseRadio, linuxWireless: true, up: true },
+        });
+
+        expect(screen.getByRole('button', { name: 'Start Monitor' })).toBeDisabled();
     });
 
     it('labels an enabled-but-down radio as Down, distinct from an explicitly disabled radio', () => {

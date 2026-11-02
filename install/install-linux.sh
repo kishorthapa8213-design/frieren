@@ -56,7 +56,7 @@ echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.no
     >/etc/apt/sources.list.d/nodesource.list
 apt-get update
 apt-get install -y \
-    ca-certificates curl git iproute2 iptables iputils-ping iw nginx network-manager \
+    aircrack-ng ca-certificates curl git iproute2 iptables iputils-ping iw nginx network-manager \
     nodejs php-cli php-curl php-fpm php-mbstring php-sqlite3 php-xml \
     rsync sudo traceroute usbutils libcap2-bin
 

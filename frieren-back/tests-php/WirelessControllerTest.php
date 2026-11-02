@@ -922,6 +922,39 @@ class WirelessControllerTest extends TestCase
         $this->assertSame(['success' => true], $result['data']);
     }
 
+    public function testSetUsbDeviceManagedRequiresABooleanState(): void
+    {
+        $result = $this->dispatch(WirelessController::class, 'wireless', [
+            'action' => 'setUsbDeviceManaged',
+            'device' => 'wlan1',
+            'managed' => 'no',
+        ]);
+
+        $this->assertSame('Invalid wireless device management request.', $result['error']);
+    }
+
+    public function testSetAircrackMonitorModeRequiresABooleanState(): void
+    {
+        $result = $this->dispatch(WirelessController::class, 'wireless', [
+            'action' => 'setAircrackMonitorMode',
+            'device' => 'wlan1',
+            'enabled' => 'yes',
+        ]);
+
+        $this->assertSame('Invalid monitor-mode request.', $result['error']);
+    }
+
+    public function testSetAircrackMonitorModeIsLinuxOnly(): void
+    {
+        $result = $this->dispatch(WirelessController::class, 'wireless', [
+            'action' => 'setAircrackMonitorMode',
+            'device' => 'wlan1',
+            'enabled' => true,
+        ]);
+
+        $this->assertSame('airmon-ng monitor mode is only available on Linux.', $result['error']);
+    }
+
     // -----------------------------------------------------------------
     // getInterfaceConfig
     // -----------------------------------------------------------------

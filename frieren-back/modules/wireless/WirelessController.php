@@ -21,6 +21,8 @@ class WirelessController extends \frieren\core\Controller
         'addInterface' => true,
         'removeInterface' => true,
         'toggleInterface' => true,
+        'setUsbDeviceManaged' => true,
+        'setAircrackMonitorMode' => true,
         'getInterfaceConfig' => true,
         'setInterfaceConfig' => true,
         'getRawWirelessConfig' => true,
@@ -136,6 +138,50 @@ class WirelessController extends \frieren\core\Controller
         }
 
         self::setError('Error toggling interface.');
+    }
+
+    public function setUsbDeviceManaged()
+    {
+        $device = $this->request['device'] ?? null;
+        $managed = $this->request['managed'] ?? null;
+        if (!is_string($device) || !is_bool($managed)) {
+            return self::setError('Invalid wireless device management request.');
+        }
+
+        if (\DeviceConfig::systemFamily() !== 'Linux') {
+            return self::setError('USB Wi-Fi management is only available on Linux.');
+        }
+
+        if (!self::setupModuleHelper()::setUsbDeviceManaged($device, $managed)) {
+            return self::setError(
+                'Could not update the USB adapter. Disconnect it from Wi-Fi and stop monitor mode before changing this setting.'
+            );
+        }
+
+        return self::setSuccess(['managed' => $managed]);
+    }
+
+    public function setAircrackMonitorMode()
+    {
+        $device = $this->request['device'] ?? null;
+        $enabled = $this->request['enabled'] ?? null;
+        if (!is_string($device) || !is_bool($enabled)) {
+            return self::setError('Invalid monitor-mode request.');
+        }
+
+        if (\DeviceConfig::systemFamily() !== 'Linux') {
+            return self::setError('airmon-ng monitor mode is only available on Linux.');
+        }
+
+        if (!self::setupModuleHelper()::setAircrackMonitorMode($device, $enabled)) {
+            return self::setError(
+                'Could not change monitor mode. Disconnect the adapter from Wi-Fi and stop any other monitor mode first.'
+            );
+        }
+
+        return self::setSuccess([
+            'enabled' => $enabled,
+        ]);
     }
 
     public function getInterfaceConfig()

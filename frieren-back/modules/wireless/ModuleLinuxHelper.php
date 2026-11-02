@@ -120,6 +120,166 @@ class ModuleLinuxHelper extends ModuleOpenWrtHelper
         return is_string($linkInfo) && preg_match('/\bstate UP\b/', $linkInfo) === 1;
     }
 
+    private static function findMonitorInterfaceForPhy($radio)
+    {
+        $deviceInfo = LinuxHelper::exec(
+            '/usr/sbin/iw dev ' . escapeshellarg($radio) . ' info',
+            true,
+            true
+        );
+        if (!is_string($deviceInfo) || !preg_match('/\bwiphy\s+(\d+)/', $deviceInfo, $matches)) {
+            return null;
+        }
+
+        $interfaces = LinuxHelper::exec('/usr/sbin/iw dev', false, true);
+        if (!is_array($interfaces)) {
+            return null;
+        }
+
+        $phy = null;
+        $interface = null;
+        foreach ($interfaces as $line) {
+            if (preg_match('/^phy#(\d+)/', $line, $phyMatch)) {
+                $phy = $phyMatch[1];
+                continue;
+            }
+            if (preg_match('/^\s+Interface\s+(\S+)/', $line, $interfaceMatch)) {
+                $interface = $interfaceMatch[1];
+                continue;
+            }
+            if ($phy === $matches[1]
+                && $interface !== null
+                && preg_match('/^\s+type\s+monitor\s*$/', $line)
+            ) {
+                return $interface;
+            }
+        }
+
+        return null;
+    }
+
+    private static function aircrackMonitorInterfaces()
+    {
+        $interfaces = LinuxHelper::settings()['aircrack_monitor_interfaces'] ?? [];
+        if (!is_array($interfaces)) {
+            throw new \RuntimeException('Invalid saved airmon-ng interface settings');
+        }
+
+        foreach ($interfaces as $device => $monitor) {
+            if (!is_string($device)
+                || !preg_match('/^[a-zA-Z0-9_.-]+$/', $device)
+                || !is_string($monitor)
+                || !preg_match('/^[a-zA-Z0-9_.-]+$/', $monitor)
+            ) {
+                throw new \RuntimeException('Invalid saved airmon-ng interface mapping');
+            }
+        }
+
+        return $interfaces;
+    }
+
+    private static function saveAircrackMonitorInterfaces($interfaces)
+    {
+        $settings = LinuxHelper::settings();
+        $settings['aircrack_monitor_interfaces'] = $interfaces;
+        LinuxHelper::saveSettings($settings);
+    }
+
+    private static function aircrackMonitorInterface($radio)
+    {
+        $monitor = self::aircrackMonitorInterfaces()[$radio] ?? null;
+        if ($monitor === null) {
+            return null;
+        }
+
+        $deviceInfo = LinuxHelper::exec(
+            '/usr/sbin/iw dev ' . escapeshellarg($radio) . ' info',
+            true,
+            true
+        );
+        $monitorInfo = LinuxHelper::exec(
+            '/usr/sbin/iw dev ' . escapeshellarg($monitor) . ' info',
+            true,
+            true
+        );
+        if (!is_string($deviceInfo)
+            || !is_string($monitorInfo)
+            || !preg_match('/\bwiphy\s+(\d+)/', $deviceInfo, $devicePhy)
+            || !preg_match('/\bwiphy\s+(\d+)/', $monitorInfo, $monitorPhy)
+            || $devicePhy[1] !== $monitorPhy[1]
+            || !preg_match('/^\s*type monitor\s*$/m', $monitorInfo)
+        ) {
+            return null;
+        }
+
+        return $monitor;
+    }
+
+    public static function setAircrackMonitorMode($device, $enabled)
+    {
+        $devices = self::wifiDevices();
+        if (!is_string($device)
+            || !preg_match('/^[a-zA-Z0-9_.-]+$/', $device)
+            || !is_bool($enabled)
+            || !isset($devices[$device])
+        ) {
+            return false;
+        }
+
+        $monitorInterface = self::aircrackMonitorInterface($device);
+        if ($enabled) {
+            if ($monitorInterface !== null) {
+                return true;
+            }
+            if ($devices[$device]['state'] === 'connected'
+                || $devices[$device]['connection'] !== ''
+                || self::monitorProfileOnRadio($device)
+            ) {
+                return false;
+            }
+            $action = 'airmon-start';
+        } else {
+            if ($monitorInterface === null) {
+                return false;
+            }
+            $action = 'airmon-stop';
+        }
+
+        $result = LinuxHelper::exec(
+            'sudo -n /usr/local/sbin/frieren-wireless-monitor '
+                . $action . ' ' . escapeshellarg($device),
+            true,
+            true
+        );
+        if ($result === false) {
+            return false;
+        }
+
+        $interfaces = self::aircrackMonitorInterfaces();
+        if ($enabled) {
+            $monitorInterface = self::findMonitorInterfaceForPhy($device);
+            if ($monitorInterface === null) {
+                if (LinuxHelper::exec(
+                    'sudo -n /usr/local/sbin/frieren-wireless-monitor airmon-stop '
+                        . escapeshellarg($device),
+                    true,
+                    true
+                ) === false) {
+                    throw new \RuntimeException(
+                        "Monitor mode started on {$device}, but Frieren could not detect the monitor interface or restore the adapter."
+                    );
+                }
+                return false;
+            }
+            $interfaces[$device] = $monitorInterface;
+        } else {
+            unset($interfaces[$device]);
+        }
+        self::saveAircrackMonitorInterfaces($interfaces);
+
+        return true;
+    }
+
     private static function monitorCommand($action, $radio)
     {
         if (!is_string($radio) || !preg_match('/^[a-zA-Z0-9_.-]+$/', $radio)) {
@@ -151,6 +311,7 @@ class ModuleLinuxHelper extends ModuleOpenWrtHelper
         return $device !== null
             && $device['state'] !== 'connected'
             && $device['connection'] === ''
+            && self::aircrackMonitorInterface($radio) === null
             && self::monitorSupported($radio);
     }
 
@@ -160,6 +321,7 @@ class ModuleLinuxHelper extends ModuleOpenWrtHelper
         return $device !== null
             && ($device['connection'] === '' || $device['connection'] === $section)
             && ($device['state'] !== 'connected' || $device['connection'] === $section)
+            && self::aircrackMonitorInterface($radio) === null
             && !self::activeMonitorOnRadio($radio)
             && self::supportedWirelessMode($radio, 'AP');
     }
@@ -214,13 +376,117 @@ class ModuleLinuxHelper extends ModuleOpenWrtHelper
             $parts = str_getcsv($line, ':', '"', '\\');
             if (count($parts) >= 4 && $parts[1] === 'wifi') {
                 $devices[$parts[0]] = [
-                    'state' => $parts[2],
-                    'connection' => $parts[3],
+                    'state' => strtolower($parts[2]),
+                    'connection' => $parts[3] === '--' ? '' : $parts[3],
+                    'managed' => strtolower($parts[2]) !== 'unmanaged',
+                    'isUsb' => self::isUsbWifiDevice($parts[0]),
                 ];
             }
         }
 
         return $devices;
+    }
+
+    private static function isUsbWifiDevice($device)
+    {
+        $devicePath = realpath('/sys/class/net/' . $device . '/device');
+
+        return is_string($devicePath)
+            && preg_match('~(?:^|/)usb[0-9]+(?:/|$)~', $devicePath) === 1;
+    }
+
+    private static function permanentMacAddress($device)
+    {
+        $output = LinuxHelper::exec(
+            '/usr/sbin/ip -o link show dev ' . escapeshellarg($device),
+            true,
+            true
+        );
+        if (is_string($output)
+            && preg_match('/\bpermaddr\s+((?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2})\b/', $output, $matches)
+        ) {
+            return strtolower($matches[1]);
+        }
+
+        $address = @file_get_contents('/sys/class/net/' . $device . '/address');
+        return is_string($address)
+            && preg_match('/^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}\s*$/', $address) === 1
+            ? strtolower(trim($address))
+            : false;
+    }
+
+    private static function savedUnmanagedWifiMacs()
+    {
+        $settings = LinuxHelper::settings();
+        $addresses = $settings['wireless_unmanaged_wifi_macs'] ?? [];
+        if (!is_array($addresses)) {
+            throw new \RuntimeException('Invalid saved USB Wi-Fi management settings');
+        }
+
+        $normalized = [];
+        foreach ($addresses as $address) {
+            if (!is_string($address)
+                || preg_match('/^([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}$/', $address) !== 1
+            ) {
+                throw new \RuntimeException('Invalid saved USB Wi-Fi MAC address');
+            }
+            $normalized[] = strtolower($address);
+        }
+
+        return array_values(array_unique($normalized));
+    }
+
+    public static function setUsbDeviceManaged($device, $managed)
+    {
+        $devices = self::wifiDevices();
+        if (!is_string($device)
+            || !preg_match('/^[a-zA-Z0-9_.-]+$/', $device)
+            || !is_bool($managed)
+            || !isset($devices[$device])
+            || !$devices[$device]['isUsb']
+        ) {
+            return false;
+        }
+
+        if ((!$managed && ($devices[$device]['state'] === 'connected'
+                || $devices[$device]['connection'] !== ''))
+            || ($managed && (
+                self::monitorIsUp($device)
+                || self::aircrackMonitorInterface($device) !== null
+            ))
+        ) {
+            return false;
+        }
+
+        $macAddress = self::permanentMacAddress($device);
+        if ($macAddress === false) {
+            return false;
+        }
+
+        $settings = LinuxHelper::settings();
+        $originalSettings = $settings;
+        $addresses = self::savedUnmanagedWifiMacs();
+        if ($managed) {
+            $addresses = array_values(array_diff($addresses, [$macAddress]));
+        } elseif (!in_array($macAddress, $addresses, true)) {
+            $addresses[] = $macAddress;
+        }
+
+        $settings['wireless_unmanaged_wifi_macs'] = $addresses;
+        LinuxHelper::saveSettings($settings);
+
+        $result = LinuxHelper::exec(
+            'sudo -n /usr/bin/nmcli device set '
+                . escapeshellarg($device) . ' managed ' . ($managed ? 'yes' : 'no'),
+            true,
+            true
+        );
+        if ($result === false) {
+            LinuxHelper::saveSettings($originalSettings);
+            return false;
+        }
+
+        return true;
     }
 
     public static function scanForNetworks($device)
@@ -274,6 +540,7 @@ class ModuleLinuxHelper extends ModuleOpenWrtHelper
         $profiles = self::nmcli(['-t', '-e', 'yes', '-f', 'NAME,TYPE,DEVICE', 'connection', 'show']);
         $monitorProfiles = self::monitorProfiles();
         foreach ($devices as $device => $state) {
+            $aircrackMonitorInterface = self::aircrackMonitorInterface($device);
             $interfaces = [];
             foreach (is_array($profiles) ? $profiles : [] as $line) {
                 $parts = str_getcsv($line, ':', '"', '\\');
@@ -332,12 +599,14 @@ class ModuleLinuxHelper extends ModuleOpenWrtHelper
                 'band' => '2.4 GHz / 5 GHz',
                 'supportedBands' => ['2.4 GHz', '5 GHz'],
                 'htmode' => 'NetworkManager managed',
-                'up' => $monitorIsUp || $state['state'] === 'connected',
+                'up' => $monitorIsUp || $aircrackMonitorInterface !== null || $state['state'] === 'connected',
                 'disabled' => false,
                 'phy' => $device,
                 'country' => null,
                 'hardware' => null,
-                'isUsb' => false,
+                'isUsb' => $state['isUsb'],
+                'networkManagerManaged' => $state['managed'],
+                'aircrackMonitorInterface' => $aircrackMonitorInterface,
                 'hwmodes' => 'Managed by NetworkManager',
                 'htmodes' => [],
                 'interfaces' => $interfaces,
@@ -352,6 +621,9 @@ class ModuleLinuxHelper extends ModuleOpenWrtHelper
     private static function availableWirelessModes($device, $state)
     {
         $modes = ['sta'];
+        if (self::aircrackMonitorInterface($device) !== null) {
+            return ['monitor'];
+        }
         if ($state['connection'] !== '' || $state['state'] === 'connected'
             || self::monitorProfileOnRadio($device)
         ) {
@@ -545,6 +817,9 @@ class ModuleLinuxHelper extends ModuleOpenWrtHelper
             return $section;
         }
 
+        if (self::aircrackMonitorInterface($radio) !== null) {
+            return false;
+        }
         if (!in_array($mode, ['ap', 'sta'], true)) {
             throw new \RuntimeException('Linux NetworkManager supports Wi-Fi client, access point, and monitor modes only.');
         }
@@ -651,7 +926,9 @@ class ModuleLinuxHelper extends ModuleOpenWrtHelper
         if ($config === []) {
             return false;
         }
-        if (self::activeMonitorOnRadio($config[1] ?? '')) {
+        if (self::activeMonitorOnRadio($config[1] ?? '')
+            || self::aircrackMonitorInterface($config[1] ?? '') !== null
+        ) {
             return false;
         }
         if (!$disabled && ($config[3] ?? '') === 'ap'

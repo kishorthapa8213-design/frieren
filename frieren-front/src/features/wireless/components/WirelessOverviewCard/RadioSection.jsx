@@ -5,7 +5,7 @@
  * More info at: https://github.com/xchwarze/frieren
  */
 import { useState, useCallback } from 'react';
-import { Badge } from 'react-bootstrap';
+import { Badge, Form } from 'react-bootstrap';
 import PropTypes from 'prop-types';
 
 import Button from '@src/components/Button';
@@ -15,18 +15,26 @@ import PanelTable from '@src/components/PanelTable';
 import ConfirmationModal from '@src/components/ConfirmationModal';
 import useRemoveInterface from '@src/features/wireless/hooks/useRemoveInterface.js';
 import useToggleInterface from '@src/features/wireless/hooks/useToggleInterface.js';
+import useSetUsbDeviceManaged from '@src/features/wireless/hooks/useSetUsbDeviceManaged.js';
+import useSetAircrackMonitorMode from '@src/features/wireless/hooks/useSetAircrackMonitorMode.js';
 import InterfaceSkeletonRow from './InterfaceSkeletonRow';
 
 const RadioSection = ({ radioName, radio, onScan, onEdit, onAdd, onConfigure, checkingSection, checkingRadio }) => {
     const { mutate: removeInterface, isPending: isRemoving } = useRemoveInterface();
     const { mutate: toggleInterface, isPending: isToggling } = useToggleInterface();
+    const { mutate: setUsbDeviceManaged, isPending: isSettingManaged } = useSetUsbDeviceManaged();
+    const { mutate: setAircrackMonitorMode, isPending: isSettingMonitorMode } = useSetAircrackMonitorMode();
 
     const [confirmRemove, setConfirmRemove] = useState(null);
     const [removingSection, setRemovingSection] = useState(null);
     const [togglingSection, setTogglingSection] = useState(null);
 
-    const isBusy = isRemoving || isToggling;
+    const isBusy = isRemoving || isToggling || isSettingManaged || isSettingMonitorMode;
     const isCheckingRadio = checkingRadio === radioName;
+    const aircrackMonitorEnabled = Boolean(radio.aircrackMonitorInterface);
+    const frierenMonitorEnabled = radio.interfaces?.some(
+        (iface) => iface.mode === 'monitor' && !iface.disabled
+    );
     const existingMatch = isCheckingRadio && radio.interfaces?.some((iface) => iface.section === checkingSection);
     const hasNewInterface = isCheckingRadio && checkingSection && !existingMatch;
 
@@ -34,6 +42,17 @@ const RadioSection = ({ radioName, radio, onScan, onEdit, onAdd, onConfigure, ch
         setTogglingSection(iface.section);
         toggleInterface({ section: iface.section, disabled: !iface.disabled });
     }, [toggleInterface]);
+
+    const handleManagedChange = useCallback((event) => {
+        setUsbDeviceManaged({ device: radioName, managed: event.target.checked });
+    }, [radioName, setUsbDeviceManaged]);
+
+    const handleAircrackMonitorToggle = useCallback(() => {
+        setAircrackMonitorMode({
+            device: radioName,
+            enabled: !aircrackMonitorEnabled,
+        });
+    }, [aircrackMonitorEnabled, radioName, setAircrackMonitorMode]);
 
     const handleRemoveConfirmed = useCallback(() => {
         if (confirmRemove) {
@@ -46,21 +65,51 @@ const RadioSection = ({ radioName, radio, onScan, onEdit, onAdd, onConfigure, ch
     return (
         <div className={'mb-4'}>
             <div className={'d-flex align-items-center justify-content-between mb-2'}>
-                <h6 className={'mb-0'}>
-                    {radioName.toUpperCase()}
-                    {(radio.supportedBands?.length ? radio.supportedBands : [radio.band || 'Unknown']).map((band) => (
-                        <Badge key={band} bg={'secondary'} className={'ms-2'}>{band}</Badge>
-                    ))}
-                    <StatusBadge status={radio.disabled ? 'disabled' : (radio.up ? 'up' : 'degraded')} className={'ms-1'}>
-                        {radio.disabled ? 'Disabled' : (radio.up ? 'Up' : 'Down')}
-                    </StatusBadge>
-                    <small className={'text-body-secondary ms-2'}>
-                        {radio.hardware ? `${radio.hardware}${radio.isUsb ? ' (USB)' : ''} | ` : ''}
-                        Channel {radio.channel} | {radio.htmode}
-                        {radio.hwmodes ? ` | ${radio.hwmodes}` : ''}
-                    </small>
-                </h6>
+                <div>
+                    <h6 className={'mb-0'}>
+                        {radioName.toUpperCase()}
+                        {(radio.supportedBands?.length ? radio.supportedBands : [radio.band || 'Unknown']).map((band) => (
+                            <Badge key={band} bg={'secondary'} className={'ms-2'}>{band}</Badge>
+                        ))}
+                        <StatusBadge status={radio.disabled ? 'disabled' : (radio.up ? 'up' : 'degraded')} className={'ms-1'}>
+                            {radio.disabled ? 'Disabled' : (radio.up ? 'Up' : 'Down')}
+                        </StatusBadge>
+                        <small className={'text-body-secondary ms-2'}>
+                            {radio.hardware ? `${radio.hardware}${radio.isUsb ? ' (USB)' : ''} | ` : ''}
+                            Channel {radio.channel} | {radio.htmode}
+                            {radio.hwmodes ? ` | ${radio.hwmodes}` : ''}
+                        </small>
+                    </h6>
+                    {radio.linuxWireless && radio.isUsb && (
+                        <Form.Check
+                            className={'small mt-2'}
+                            id={`networkmanager-managed-${radioName}`}
+                            type={'switch'}
+                            label={radio.networkManagerManaged
+                                ? 'NetworkManager manages this USB adapter'
+                                : 'USB adapter is unmanaged by NetworkManager'}
+                            checked={!!radio.networkManagerManaged}
+                            onChange={handleManagedChange}
+                            disabled={isBusy}
+                            title={'This setting is saved per adapter and reapplied at system startup. Disconnect active Wi-Fi connections before changing it.'}
+                        />
+                    )}
+                </div>
                 <ActionButtons>
+                    {radio.linuxWireless && (
+                        <Button
+                            size={'sm'}
+                            variant={aircrackMonitorEnabled ? 'outline-danger' : 'outline-warning'}
+                            icon={'activity'}
+                            label={aircrackMonitorEnabled ? 'Stop Monitor' : 'Start Monitor'}
+                            title={aircrackMonitorEnabled
+                                ? `Stop airmon-ng monitor mode${radio.aircrackMonitorInterface ? ` (${radio.aircrackMonitorInterface})` : ''}`
+                                : 'Start monitor mode with airmon-ng'}
+                            onClick={handleAircrackMonitorToggle}
+                            loading={isSettingMonitorMode}
+                            disabled={isBusy || (!aircrackMonitorEnabled && (radio.up || frierenMonitorEnabled))}
+                        />
+                    )}
                     <Button
                         size={'sm'}
                         variant={'outline-secondary'}
@@ -82,9 +131,7 @@ const RadioSection = ({ radioName, radio, onScan, onEdit, onAdd, onConfigure, ch
                         icon={'plus'}
                         title={'Add interface'}
                         onClick={() => onAdd(radioName)}
-                        disabled={radio.linuxWireless && radio.interfaces?.some(
-                            (iface) => iface.mode === 'monitor' && !iface.disabled
-                        )}
+                        disabled={radio.linuxWireless && (aircrackMonitorEnabled || frierenMonitorEnabled)}
                     />
                 </ActionButtons>
             </div>

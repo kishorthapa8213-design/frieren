@@ -74,6 +74,12 @@ disconnect it. Use HTTPS before exposing the panel outside a trusted local
 network. Linux terminal sessions require a host system account; terminal
 autologin is intentionally disabled. The Linux terminal proxy allows WebSocket
 connections to remain idle for up to one year before timing out.
+USB Wi-Fi adapters can also be marked unmanaged from Wireless Overview. Frieren
+saves that choice by the adapter's permanent MAC address and reapplies it at
+system startup; disconnect active Wi-Fi connections before changing the setting.
+Linux Wireless Overview also provides a separate airmon-ng monitor-mode toggle
+for each Wi-Fi adapter. The installer installs aircrack-ng; disconnect an
+adapter from Wi-Fi before starting monitor mode.
 
 Third-party module dependencies use Debian package names where a manifest
 provides `linuxDependencies`. Linux provisions the required iptables access,
